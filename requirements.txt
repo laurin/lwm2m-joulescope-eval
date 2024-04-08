@@ -1,0 +1,4 @@
+joulescope
+numpy
+matplotlib
+pyjls
