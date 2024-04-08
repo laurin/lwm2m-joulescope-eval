@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import matplotlib
 import os
 import numpy as np
+from pathlib import Path
+import argparse
 
 plt.rcParams.update({
     "font.family": "serif",
@@ -47,8 +49,16 @@ def read_joulescope_file(jls_file_path, start_timestamp, end_timestamp):
 
 
 
+def save_plot(name):
+    output_dir = Path("./out")
+    output_dir.mkdir(exist_ok=True)
+    output_file = output_dir / f"{name}.pdf"
+    plt.savefig(output_file, format='pdf')
+    print(f"Plot saved to {output_file}")
 
-def plot_data(power, start_timestamp, end_timestamp):
+
+
+def plot_data(power, start_timestamp, end_timestamp, name, show_plot):
     fig, ax = plt.subplots(figsize=(8, 5))
 
     duration_ms = (end_timestamp - start_timestamp) / 1000
@@ -70,16 +80,24 @@ def plot_data(power, start_timestamp, end_timestamp):
 
     ax.plot(time_range_ms, power, color='darkblue')
     plt.tight_layout()
-    plt.show()
+
+    save_plot(name)
+
+    if show_plot:
+        plt.show()
 
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python script_name.py <path_to_joulescope_file>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="plot jls files as fancy diagrams")
+    parser.add_argument('jls_file', type=str, help="path to jls file")
+    parser.add_argument('-o', '--output', type=str, help="name of resulting png file", default="out")
+    parser.add_argument('-s', '--show', action='store_true', help="whether the created plot should be shown")
+    args = parser.parse_args()
 
-    jls_file_path = sys.argv[1] 
+
+    jls_file_path = args.jls_file
+
     if not os.path.exists(jls_file_path):
             print(f"no jsl file found at {anno_file_path}")
 
@@ -88,6 +106,6 @@ if __name__ == "__main__":
     if len(annotation_timestamps) == 2:
         start_timestamp, end_timestamp = annotation_timestamps
         power = read_joulescope_file(jls_file_path, start_timestamp, end_timestamp)
-        plot_data(power, start_timestamp, end_timestamp)
+        plot_data(power, start_timestamp, end_timestamp, args.output, args.show)
     else:
         print("no dual annotations found")
