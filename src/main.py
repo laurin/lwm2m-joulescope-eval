@@ -64,7 +64,7 @@ def save_plot(name):
 
 
 
-def plot_data(power, power2, start_timestamp, end_timestamp, name, show_plot):
+def plot_data(power, power2, start_timestamp, end_timestamp, name, show_plot, label):
     fig, ax = plt.subplots(figsize=(8, 5))
 
     duration_ms = (end_timestamp - start_timestamp) / 1000
@@ -88,11 +88,16 @@ def plot_data(power, power2, start_timestamp, end_timestamp, name, show_plot):
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     ax.tick_params(axis='both', which='major', labelsize=10)
 
-    ax.plot(time_range_ms, power[0:length], color='darkblue')
+    if len(label) == 0:
+        label = [None, None]
+
+    ax.plot(time_range_ms, power[0:length], color='darkblue', label=label[0])
 
     if power2 is not None:
-        ax.plot(time_range_ms, power2[0:length], color='red')
+        ax.plot(time_range_ms, power2[0:length], color='red', label=label[1])
 
+    if label[0] is not None:
+        plt.legend()
 
     plt.tight_layout()
 
@@ -109,8 +114,8 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', type=str, help="name of resulting png file", default="out")
     parser.add_argument('-s', '--show', action='store_true', help="whether the created plot should be shown")
     parser.add_argument('-a', '--add-file', help="addition file")
+    parser.add_argument('-l', '--label', help="label for first file", action='append', default=[])
     args = parser.parse_args()
-
 
     jls_file_path = args.jls_file
 
@@ -120,4 +125,4 @@ if __name__ == "__main__":
     if args.add_file is not None:
         power2, _, _ = read_joulescope_file(args.add_file)
 
-    plot_data(power, power2, start_timestamp, end_timestamp, args.output, args.show)
+    plot_data(power, power2, start_timestamp, end_timestamp, args.output, args.show, args.label)
