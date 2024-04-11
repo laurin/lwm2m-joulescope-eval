@@ -31,7 +31,13 @@ def read_annotations(jls_file_path):
 
 
 
-def read_joulescope_file(jls_file_path, start_timestamp, end_timestamp):
+def read_joulescope_file(jls_file_path):
+    if not os.path.exists(jls_file_path):
+            print(f"no jsl file found at {anno_file_path}")
+
+    anno_file_path = jls_file_path.rsplit('.', 1)[0] + '.anno.jls'
+    start_timestamp, end_timestamp = read_annotations(jls_file_path)
+
     with Reader(jls_file_path) as r:
         signal = r.signal_lookup('power').signal_id
         sr = r.signal_lookup('power').sample_rate 
@@ -45,7 +51,7 @@ def read_joulescope_file(jls_file_path, start_timestamp, end_timestamp):
         power_stats = r.fsr_statistics(signal, start_sample_id, increment, round(length/increment))
         power_mean = power_stats[:, SummaryFSR.MEAN]
 
-    return power_mean
+    return power_mean, start_timestamp, end_timestamp
 
 
 
@@ -58,27 +64,36 @@ def save_plot(name):
 
 
 
-def plot_data(power, start_timestamp, end_timestamp, name, show_plot):
+def plot_data(power, power2, start_timestamp, end_timestamp, name, show_plot):
     fig, ax = plt.subplots(figsize=(8, 5))
 
     duration_ms = (end_timestamp - start_timestamp) / 1000
-    time_range_ms = np.linspace(0, duration_ms, len(power))
+    length = min(len(power), len(power2))
+    time_range_ms = np.linspace(0, duration_ms, length)
 
     ax.set_xlabel(r'\textit{t} / ms', fontsize=12, usetex=True)
 
     if duration_ms > 1000:
-        time_range_ms = np.linspace(0, duration_ms / 1000, len(power))
         ax.set_xlabel(r'\textit{t} / s', fontsize=12, usetex=True)
+        time_range_ms = np.linspace(0, duration_ms / 1000, length)
 
     ax.set_ylabel(r'\textit{P} / mW', fontsize=12, usetex=True)
     
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
+    ax.set_ylim(bottom=0, top=max(max(power), max(power2)))
+    ax.set_xlim(left=0, right=max(time_range_ms))
+
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     ax.tick_params(axis='both', which='major', labelsize=10)
 
-    ax.plot(time_range_ms, power, color='darkblue')
+    ax.plot(time_range_ms, power[0:length], color='darkblue')
+
+    if power2 is not None:
+        ax.plot(time_range_ms, power2[0:length], color='red')
+
+
     plt.tight_layout()
 
     save_plot(name)
@@ -93,19 +108,16 @@ if __name__ == "__main__":
     parser.add_argument('jls_file', type=str, help="path to jls file")
     parser.add_argument('-o', '--output', type=str, help="name of resulting png file", default="out")
     parser.add_argument('-s', '--show', action='store_true', help="whether the created plot should be shown")
+    parser.add_argument('-a', '--add-file', help="addition file")
     args = parser.parse_args()
 
 
     jls_file_path = args.jls_file
 
-    if not os.path.exists(jls_file_path):
-            print(f"no jsl file found at {anno_file_path}")
+    power, start_timestamp, end_timestamp = read_joulescope_file(jls_file_path)
 
-    annotation_timestamps = read_annotations(jls_file_path)
-    
-    if len(annotation_timestamps) == 2:
-        start_timestamp, end_timestamp = annotation_timestamps
-        power = read_joulescope_file(jls_file_path, start_timestamp, end_timestamp)
-        plot_data(power, start_timestamp, end_timestamp, args.output, args.show)
-    else:
-        print("no dual annotations found")
+    power2 = None
+    if args.add_file is not None:
+        power2, _, _ = read_joulescope_file(args.add_file)
+
+    plot_data(power, power2, start_timestamp, end_timestamp, args.output, args.show)
