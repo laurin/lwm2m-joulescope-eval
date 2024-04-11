@@ -114,7 +114,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', type=str, help="name of resulting png file", default="out")
     parser.add_argument('-s', '--show', action='store_true', help="whether the created plot should be shown")
     parser.add_argument('-a', '--add-file', help="addition file")
-    parser.add_argument('-l', '--label', help="label for first file", action='append', default=[])
+    parser.add_argument('-l', '--label', help="labels for plot", action='append', default=[])
     args = parser.parse_args()
 
     jls_file_path = args.jls_file

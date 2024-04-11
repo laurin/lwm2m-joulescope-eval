@@ -1,4 +1,3 @@
-joulescope
 numpy
 matplotlib
 pyjls
