@@ -7,6 +7,9 @@ import numpy as np
 from pathlib import Path
 import argparse
 
+JLS_ANNOTATION_TYPE_VERTICAL=2
+JLS_ANNOTATION_TYPE_TEXT=1
+
 plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times New Roman"],
@@ -19,8 +22,27 @@ def read_annotations(jls_file_path):
     with Reader(anno_file_path) as r:
         if os.path.exists(anno_file_path):
                 def annotation_callback(timestamp, y, annotation_type, group_id, data):
-                    annotation_timestamps.append(timestamp)
-                    return False
+                    if annotation_type == JLS_ANNOTATION_TYPE_VERTICAL:
+                        annotation_timestamps.append(timestamp)
+                        return False
+
+                r.annotations(1, 0, annotation_callback)
+        else:
+            print(f"no annotation file found at {anno_file_path}")
+
+    return annotation_timestamps
+
+
+def read_text_annotations(jls_file_path):
+    anno_file_path = jls_file_path.rsplit('.', 1)[0] + '.anno.jls'
+    annotation_timestamps = []
+    
+    with Reader(anno_file_path) as r:
+        if os.path.exists(anno_file_path):
+                def annotation_callback(timestamp, y, annotation_type, group_id, data):
+                    if annotation_type == JLS_ANNOTATION_TYPE_TEXT:
+                        annotation_timestamps.append([timestamp, data])
+                        return False
 
                 r.annotations(1, 0, annotation_callback)
         else:
@@ -47,7 +69,7 @@ def read_joulescope_file(jls_file_path):
         end_sample_id = round((end_timestamp * sr) / 1000000)
 
         length = end_sample_id - start_sample_id
-        increment = round(length / 1000)
+        increment = round(length / 2000)
         power_stats = r.fsr_statistics(signal, start_sample_id, increment, round(length/increment))
         power_mean = power_stats[:, SummaryFSR.MEAN]
 
@@ -64,40 +86,62 @@ def save_plot(name):
 
 
 
-def plot_data(power, power2, start_timestamp, end_timestamp, name, show_plot, label):
-    fig, ax = plt.subplots(figsize=(8, 5))
+def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, texts):
+    fig, ax = plt.subplots(figsize=(10, 5))
 
     duration_ms = (end_timestamp - start_timestamp) / 1000
-    length = min(len(power), len(power2))
+    length = min(map(len, power))
     time_range_ms = np.linspace(0, duration_ms, length)
 
     ax.set_xlabel(r'\textit{t} / ms', fontsize=12, usetex=True)
 
+    factor = 1
+    
     if duration_ms > 1000:
+        factor = 1 / 1000
         ax.set_xlabel(r'\textit{t} / s', fontsize=12, usetex=True)
-        time_range_ms = np.linspace(0, duration_ms / 1000, length)
+
+    time_range_ms = np.linspace(0, duration_ms * factor, length)
 
     ax.set_ylabel(r'\textit{P} / mW', fontsize=12, usetex=True)
     
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-    ax.set_ylim(bottom=0, top=max(max(power), max(power2)))
+    ax.set_ylim(bottom=0, top=max(map(max, power)))
     ax.set_xlim(left=0, right=max(time_range_ms))
 
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     ax.tick_params(axis='both', which='major', labelsize=10)
 
     if len(label) == 0:
-        label = [None, None]
+        label = [None, None, None, None]
 
-    ax.plot(time_range_ms, power[0:length], color='darkblue', label=label[0])
+    colors=['darkblue', 'red', 'green', 'yellow']
 
-    if power2 is not None:
-        ax.plot(time_range_ms, power2[0:length], color='red', label=label[1])
+    
+    for i in range(len(power)):
+        ax.plot(time_range_ms, power[i][0:length], color=colors[i], label=label[i], linewidth=1)
 
     if label[0] is not None:
         plt.legend()
+        
+
+    
+    ax2 = ax.twiny()
+    
+    vert_marker_texts = []
+    vert_marker_times = []
+
+    for i in range(len(texts)):
+        vert_marker_times.append((texts[i][0] - start_timestamp) * factor / 1000)
+        vert_marker_texts.append(texts[i][1])
+    
+    ax2.set_xlim(left=0, right=max(time_range_ms))
+    ax2.set_xticks(vert_marker_times)
+    ax2.set_xticklabels(vert_marker_texts, rotation=20, color='blue', horizontalalignment='left')
+
+    ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color='blue')
 
     plt.tight_layout()
 
@@ -110,19 +154,31 @@ def plot_data(power, power2, start_timestamp, end_timestamp, name, show_plot, la
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="plot jls files as fancy diagrams")
-    parser.add_argument('jls_file', type=str, help="path to jls file")
-    parser.add_argument('-o', '--output', type=str, help="name of resulting png file", default="out")
+    parser.add_argument('jls_file', type=str, help="path to jls files", nargs='+')
+    parser.add_argument('-o', '--output', type=str, help="name of resulting png file")
     parser.add_argument('-s', '--show', action='store_true', help="whether the created plot should be shown")
-    parser.add_argument('-a', '--add-file', help="addition file")
     parser.add_argument('-l', '--label', help="labels for plot", action='append', default=[])
     args = parser.parse_args()
 
-    jls_file_path = args.jls_file
+    jls_file_paths = [x for x in args.jls_file if not '.anno.' in x]
 
-    power, start_timestamp, end_timestamp = read_joulescope_file(jls_file_path)
+    power = []
 
-    power2 = None
-    if args.add_file is not None:
-        power2, _, _ = read_joulescope_file(args.add_file)
+    texts = read_text_annotations(jls_file_paths[0])
 
-    plot_data(power, power2, start_timestamp, end_timestamp, args.output, args.show, args.label)
+    power.append(None)
+    power[0], start_timestamp, end_timestamp = read_joulescope_file(jls_file_paths[0])
+
+    for i in range(1, len(jls_file_paths)):
+        power.append(None)
+        power[i], _, _ = read_joulescope_file(jls_file_paths[i])
+
+    output = args.output
+
+    file_dir = jls_file_paths[0].replace('.jls', '').replace('./', '').split('/')
+    file_dir.remove('data')
+
+    if args.output == None:
+        args.output = '-'.join(file_dir)
+
+    plot_data(power, start_timestamp, end_timestamp, args.output, args.show, args.label, texts)
