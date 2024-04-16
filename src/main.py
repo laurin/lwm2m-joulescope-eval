@@ -87,19 +87,20 @@ def save_plot(name):
 
 
 def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, texts):
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(10, 4))
 
     duration_ms = (end_timestamp - start_timestamp) / 1000
     length = min(map(len, power))
     time_range_ms = np.linspace(0, duration_ms, length)
 
-    ax.set_xlabel(r'\textit{t} / ms', fontsize=12, usetex=True)
-
     factor = 1
+    time_unit = 'ms'
     
     if duration_ms > 1000:
         factor = 1 / 1000
-        ax.set_xlabel(r'\textit{t} / s', fontsize=12, usetex=True)
+        time_unit = 's'
+
+    ax.set_xlabel(r'\textit{t} / ' + time_unit, fontsize=12, usetex=True)
 
     time_range_ms = np.linspace(0, duration_ms * factor, length)
 
@@ -133,15 +134,20 @@ def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, tex
     vert_marker_texts = []
     vert_marker_times = []
 
+    def get_label_text(annotation):
+        time = str(round((texts[i][0] - start_timestamp) * factor / 1000, 2))
+
+        return f'{annotation[1]} ({time}{time_unit})'
+
     for i in range(len(texts)):
         vert_marker_times.append((texts[i][0] - start_timestamp) * factor / 1000)
-        vert_marker_texts.append(texts[i][1])
+        vert_marker_texts.append(get_label_text(texts[i]))
     
     ax2.set_xlim(left=0, right=max(time_range_ms))
     ax2.set_xticks(vert_marker_times)
-    ax2.set_xticklabels(vert_marker_texts, rotation=20, color='blue', horizontalalignment='left')
+    ax2.set_xticklabels(vert_marker_texts, rotation=-25, color='black', horizontalalignment='right')
 
-    ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color='blue')
+    ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color='black')
 
     plt.tight_layout()
 
@@ -177,6 +183,7 @@ if __name__ == "__main__":
 
     file_dir = jls_file_paths[0].replace('.jls', '').replace('./', '').split('/')
     file_dir.remove('data')
+    file_dir.pop()
 
     if args.output == None:
         args.output = '-'.join(file_dir)
