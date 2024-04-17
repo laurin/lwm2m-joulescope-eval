@@ -10,6 +10,8 @@ import argparse
 JLS_ANNOTATION_TYPE_VERTICAL=2
 JLS_ANNOTATION_TYPE_TEXT=1
 
+VALUE_COUNT=2000
+
 plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times New Roman"],
@@ -69,7 +71,7 @@ def read_joulescope_file(jls_file_path):
         end_sample_id = round((end_timestamp * sr) / 1000000)
 
         length = end_sample_id - start_sample_id
-        increment = round(length / 2000)
+        increment = round(length / VALUE_COUNT)
         power_stats = r.fsr_statistics(signal, start_sample_id, increment, round(length/increment))
         power_mean = power_stats[:, SummaryFSR.MEAN]
 
@@ -81,12 +83,12 @@ def save_plot(name):
     output_dir = Path("./out")
     output_dir.mkdir(exist_ok=True)
     output_file = output_dir / f"{name}.pdf"
-    plt.savefig(output_file, format='pdf')
+    plt.savefig(output_file, format='pdf', bbox_inches='tight', transparent="True", pad_inches=0)
     print(f"Plot saved to {output_file}")
 
 
 
-def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, texts):
+def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, texts, angle):
     fig, ax = plt.subplots(figsize=(10, 4))
 
     duration_ms = (end_timestamp - start_timestamp) / 1000
@@ -125,9 +127,7 @@ def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, tex
         ax.plot(time_range_ms, power[i][0:length], color=colors[i], label=label[i], linewidth=1)
 
     if label[0] is not None:
-        plt.legend()
-        
-
+        plt.legend(loc='upper right')
     
     ax2 = ax.twiny()
     
@@ -145,7 +145,19 @@ def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, tex
     
     ax2.set_xlim(left=0, right=max(time_range_ms))
     ax2.set_xticks(vert_marker_times)
-    ax2.set_xticklabels(vert_marker_texts, rotation=-25, color='black', horizontalalignment='right')
+
+    rotation = 0
+    align = 'center'
+    pad = 0
+
+    if angle:
+        rotation = -25
+        align = 'right'
+        pad = -2
+
+    ax2.tick_params(axis='x', length=5, width=1, pad=pad)
+    ax2.set_xticklabels(vert_marker_texts, rotation=rotation, color='black', horizontalalignment=align)
+
 
     ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color='black')
 
@@ -164,6 +176,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', type=str, help="name of resulting png file")
     parser.add_argument('-s', '--show', action='store_true', help="whether the created plot should be shown")
     parser.add_argument('-l', '--label', help="labels for plot", action='append', default=[])
+    parser.add_argument('-na', '--no-angle', action='store_true', help="do not use an angle for labels")
     args = parser.parse_args()
 
     jls_file_paths = [x for x in args.jls_file if not '.anno.' in x]
@@ -188,4 +201,4 @@ if __name__ == "__main__":
     if args.output == None:
         args.output = '-'.join(file_dir)
 
-    plot_data(power, start_timestamp, end_timestamp, args.output, args.show, args.label, texts)
+    plot_data(power, start_timestamp, end_timestamp, args.output, args.show, args.label, texts, not args.no_angle)
