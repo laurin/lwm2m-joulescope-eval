@@ -55,7 +55,7 @@ def read_text_annotations(jls_file_path):
 
 
 
-def read_joulescope_file(jls_file_path):
+def read_joulescope_file(jls_file_path, value_count):
     if not os.path.exists(jls_file_path):
             print(f"no jsl file found at {anno_file_path}")
 
@@ -71,7 +71,7 @@ def read_joulescope_file(jls_file_path):
         end_sample_id = round((end_timestamp * sr) / 1000000)
 
         length = end_sample_id - start_sample_id
-        increment = round(length / VALUE_COUNT)
+        increment = round(length / value_count)
         power_stats = r.fsr_statistics(signal, start_sample_id, increment, round(length/increment))
         power_mean = power_stats[:, SummaryFSR.MEAN]
 
@@ -106,7 +106,7 @@ def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, tex
 
     time_range_ms = np.linspace(0, duration_ms * factor, length)
 
-    ax.set_ylabel(r'\textit{P} / mW', fontsize=12, usetex=True)
+    ax.set_ylabel(r'\textit{P} / W', fontsize=12, usetex=True)
     
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -177,6 +177,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--show', action='store_true', help="whether the created plot should be shown")
     parser.add_argument('-l', '--label', help="labels for plot", action='append', default=[])
     parser.add_argument('-na', '--no-angle', action='store_true', help="do not use an angle for labels")
+    parser.add_argument('-c', '--value-count', help="amount of values to plot", default=VALUE_COUNT, type=int)
     args = parser.parse_args()
 
     jls_file_paths = [x for x in args.jls_file if not '.anno.' in x]
@@ -186,11 +187,11 @@ if __name__ == "__main__":
     texts = read_text_annotations(jls_file_paths[0])
 
     power.append(None)
-    power[0], start_timestamp, end_timestamp = read_joulescope_file(jls_file_paths[0])
+    power[0], start_timestamp, end_timestamp = read_joulescope_file(jls_file_paths[0], args.value_count)
 
     for i in range(1, len(jls_file_paths)):
         power.append(None)
-        power[i], _, _ = read_joulescope_file(jls_file_paths[i])
+        power[i], _, _ = read_joulescope_file(jls_file_paths[i], args.value_count)
 
     output = args.output
 
