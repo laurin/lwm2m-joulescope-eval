@@ -17,6 +17,20 @@ plt.rcParams.update({
     "font.serif": ["Times New Roman"],
 })
 
+NUMBER_SYMBOLS=[
+    "⓪",
+    "①",
+    "②",
+    "③",
+    "④",
+    "⑤",
+    "⑥",
+    "⑦",
+    "⑧",
+    "⑨",
+    "⑩",
+]
+
 def read_annotations(jls_file_path):
     anno_file_path = jls_file_path.rsplit('.', 1)[0] + '.anno.jls'
     annotation_timestamps = []
@@ -88,8 +102,8 @@ def save_plot(name):
 
 
 
-def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, texts, angle):
-    fig, ax = plt.subplots(figsize=(10, 4))
+def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, texts):
+    fig, ax = plt.subplots(figsize=(10, 3 + (0.2 * len(texts))))
 
     duration_ms = (end_timestamp - start_timestamp) / 1000
     length = min(map(len, power))
@@ -102,7 +116,7 @@ def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, tex
         factor = 1 / 1000
         time_unit = 's'
 
-    ax.set_xlabel(r'\textit{t} / ' + time_unit, fontsize=12, usetex=True)
+    ax.set_xlabel(r'\textit{t} / ' + time_unit, fontsize=12, usetex=True, loc="center")
 
     time_range_ms = np.linspace(0, duration_ms * factor, length)
 
@@ -127,12 +141,17 @@ def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, tex
         ax.plot(time_range_ms, power[i][0:length], color=colors[i], label=label[i], linewidth=1)
 
     if label[0] is not None:
-        plt.legend(loc='upper right')
+        legend = plt.legend(loc='upper right')
+        legend.get_frame().set_edgecolor('black')
+        legend.get_frame().set_linewidth(0.5)
+        legend.get_frame().set_boxstyle('square', pad=0)
     
     ax2 = ax.twiny()
     
     vert_marker_texts = []
     vert_marker_times = []
+    
+    label_legend_text=[]
 
     def get_label_text(annotation):
         time = str(round((texts[i][0] - start_timestamp) * factor / 1000, 2))
@@ -141,25 +160,21 @@ def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, tex
 
     for i in range(len(texts)):
         vert_marker_times.append((texts[i][0] - start_timestamp) * factor / 1000)
-        vert_marker_texts.append(get_label_text(texts[i]))
+        vert_marker_texts.append(NUMBER_SYMBOLS[i + 1])
+        label_legend_text.append(f"{NUMBER_SYMBOLS[i + 1]} {get_label_text(texts[i])}")
     
     ax2.set_xlim(left=0, right=max(time_range_ms))
     ax2.set_xticks(vert_marker_times)
 
-    rotation = 0
-    align = 'center'
-    pad = 0
-
-    if angle:
-        rotation = -25
-        align = 'right'
-        pad = -2
-
-    ax2.tick_params(axis='x', length=5, width=1, pad=pad)
-    ax2.set_xticklabels(vert_marker_texts, rotation=rotation, color='black', horizontalalignment=align)
-
+    ax2.tick_params(axis='x', length=3, width=0.8, pad=0)
+    ax2.set_xticklabels(vert_marker_texts, color='black', horizontalalignment="center", fontfamily="Calibri",fontsize=9)
 
     ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color='black')
+    ax2.set_zorder(-1)
+
+    props = dict(boxstyle='round', facecolor='black', alpha=0)
+    ax.text(1, -0.1, "\n".join(label_legend_text), transform=ax.transAxes, fontsize=10,
+        verticalalignment='top', bbox=props, horizontalalignment="right", fontfamily="Calibri", multialignment="left")
 
     plt.tight_layout()
 
@@ -176,7 +191,6 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', type=str, help="name of resulting png file")
     parser.add_argument('-s', '--show', action='store_true', help="whether the created plot should be shown")
     parser.add_argument('-l', '--label', help="labels for plot", action='append', default=[])
-    parser.add_argument('-na', '--no-angle', action='store_true', help="do not use an angle for labels")
     parser.add_argument('-c', '--value-count', help="amount of values to plot", default=VALUE_COUNT, type=int)
     args = parser.parse_args()
 
@@ -202,4 +216,4 @@ if __name__ == "__main__":
     if args.output == None:
         args.output = '-'.join(file_dir)
 
-    plot_data(power, start_timestamp, end_timestamp, args.output, args.show, args.label, texts, not args.no_angle)
+    plot_data(power, start_timestamp, end_timestamp, args.output, args.show, args.label, texts)
