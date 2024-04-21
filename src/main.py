@@ -166,7 +166,7 @@ def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, tex
     ax2.set_xlim(left=0, right=max(time_range_ms))
     ax2.set_xticks(vert_marker_times)
 
-    ax2.tick_params(axis='x', length=3, width=0.8, pad=0)
+    ax2.tick_params(axis='x', length=3, width=0.8, pad=-0.1)
     ax2.set_xticklabels(vert_marker_texts, color='black', horizontalalignment="center", fontfamily="Calibri",fontsize=9)
 
     ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color='black')
