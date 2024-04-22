@@ -34,7 +34,7 @@ NUMBER_SYMBOLS=[
 def read_annotations(jls_file_path):
     anno_file_path = jls_file_path.rsplit('.', 1)[0] + '.anno.jls'
     annotation_timestamps = []
-    
+
     with Reader(anno_file_path) as r:
         if os.path.exists(anno_file_path):
                 def annotation_callback(timestamp, y, annotation_type, group_id, data):
@@ -52,7 +52,7 @@ def read_annotations(jls_file_path):
 def read_text_annotations(jls_file_path):
     anno_file_path = jls_file_path.rsplit('.', 1)[0] + '.anno.jls'
     annotation_timestamps = []
-    
+
     with Reader(anno_file_path) as r:
         if os.path.exists(anno_file_path):
                 def annotation_callback(timestamp, y, annotation_type, group_id, data):
@@ -100,31 +100,7 @@ def save_plot(name):
     plt.savefig(output_file, format='pdf', bbox_inches='tight', transparent="True", pad_inches=0)
     print(f"Plot saved to {output_file}")
 
-
-
-def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, texts):
-    fig, ax = plt.subplots(figsize=(10, 3 + (0.2 * len(texts))))
-
-    duration_ms = (end_timestamp - start_timestamp) / 1000
-    length = min(map(len, power))
-    time_range_ms = np.linspace(0, duration_ms, length)
-
-    factor = 1
-    time_unit = 'ms'
-    
-    if duration_ms > 1000:
-        factor = 1 / 1000
-        time_unit = 's'
-
-    ax.set_xlabel(r'\textit{t} / ' + time_unit, fontsize=12, usetex=True, loc="center")
-
-    time_range_ms = np.linspace(0, duration_ms * factor, length)
-
-    ax.set_ylabel(r'\textit{P} / W', fontsize=12, usetex=True)
-    
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-
+def add_data_to_plot(ax, power, label, time_range_ms, length, offset=0):
     ax.set_ylim(bottom=0, top=max(map(max, power)))
     ax.set_xlim(left=0, right=max(time_range_ms))
 
@@ -136,47 +112,96 @@ def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, tex
 
     colors=['darkblue', 'red', 'green', 'yellow']
 
-    
     for i in range(len(power)):
-        ax.plot(time_range_ms, power[i][0:length], color=colors[i], label=label[i], linewidth=1)
+        ax.plot(time_range_ms, power[i][0:length], color=colors[i+offset], label=label[i], linewidth=1)
 
     if label[0] is not None:
-        legend = plt.legend(loc='upper right')
+        legend = ax.legend(loc='upper right')
         legend.get_frame().set_edgecolor('black')
         legend.get_frame().set_linewidth(0.5)
         legend.get_frame().set_boxstyle('square', pad=0)
-    
-    ax2 = ax.twiny()
-    
-    vert_marker_texts = []
-    vert_marker_times = []
-    
-    label_legend_text=[]
 
-    def get_label_text(annotation):
-        time = str(round((texts[i][0] - start_timestamp) * factor / 1000, 2))
 
-        return f'{annotation[1]} ({time}{time_unit})'
+def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, texts, subplots, compact):
+    rows = 1
+    if subplots:
+        rows = len(power)
 
-    for i in range(len(texts)):
-        vert_marker_times.append((texts[i][0] - start_timestamp) * factor / 1000)
-        vert_marker_texts.append(NUMBER_SYMBOLS[i + 1])
-        label_legend_text.append(f"{NUMBER_SYMBOLS[i + 1]} {get_label_text(texts[i])}")
-    
-    ax2.set_xlim(left=0, right=max(time_range_ms))
-    ax2.set_xticks(vert_marker_times)
+    height = 3
+    height += 0.2 * len(texts)
 
-    ax2.tick_params(axis='x', length=3, width=0.8, pad=-0.1)
-    ax2.set_xticklabels(vert_marker_texts, color='black', horizontalalignment="center", fontfamily="Calibri",fontsize=9)
+    if subplots:
+        height += 0.2 * len(power)
 
-    ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color='black')
-    ax2.set_zorder(-1)
+    fig, axes = plt.subplots(rows, 1, figsize=(10, height), squeeze=False)
+
+    for row in range(len(axes)):
+        ax = axes[row][0]
+        duration_ms = (end_timestamp - start_timestamp) / 1000
+        length = min(map(len, power))
+        time_range_ms = np.linspace(0, duration_ms, length)
+
+        factor = 1
+        time_unit = 'ms'
+        
+        if duration_ms > 1000:
+            factor = 1 / 1000
+            time_unit = 's'
+
+        labelpad = -8 if compact else 4
+        ax.set_xlabel(r'\textit{t} / ' + time_unit, fontsize=12, usetex=True, loc="center", labelpad=labelpad)
+
+        time_range_ms = np.linspace(0, duration_ms * factor, length)
+
+        if subplots:
+            add_data_to_plot(ax, [power[row]], [label[row]], time_range_ms, length, row)
+        else:
+            add_data_to_plot(ax, power, label, time_range_ms, length)
+
+        ax.set_ylabel(r'\textit{P} / W', fontsize=12, usetex=True)
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+
+        ax2 = ax.twiny()
+
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+
+        vert_marker_texts = []
+        vert_marker_times = []
+
+        label_legend_text=[]
+
+        def get_label_text(annotation):
+            time = str(round((texts[i][0] - start_timestamp) * factor / 1000, 2))
+
+            return f'{annotation[1]} ({time}{time_unit})'
+
+        for i in range(len(texts)):
+            vert_marker_times.append((texts[i][0] - start_timestamp) * factor / 1000)
+            vert_marker_texts.append(NUMBER_SYMBOLS[i + 1])
+            label_legend_text.append(f"{NUMBER_SYMBOLS[i + 1]} {get_label_text(texts[i])}")
+
+        ax2.set_xlim(left=0, right=max(time_range_ms))
+        ax2.set_xticks(vert_marker_times)
+
+        ax2.tick_params(axis='x', length=3, width=0.8, pad=-0.1)
+        ax2.set_xticklabels(vert_marker_texts, color='black', horizontalalignment="center", fontfamily="Calibri",fontsize=9)
+
+        ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color='black')
+        ax2.set_zorder(-1)
+
 
     props = dict(boxstyle='round', facecolor='black', alpha=0)
     ax.text(1, -0.1, "\n".join(label_legend_text), transform=ax.transAxes, fontsize=10,
         verticalalignment='top', bbox=props, horizontalalignment="right", fontfamily="Calibri", multialignment="left")
 
-    plt.tight_layout()
+    if subplots:
+        plt.subplots_adjust(wspace=100, hspace=100)
+
+    plt.tight_layout(pad=0)
 
     save_plot(name)
 
@@ -191,7 +216,9 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output', type=str, help="name of resulting png file")
     parser.add_argument('-s', '--show', action='store_true', help="whether the created plot should be shown")
     parser.add_argument('-l', '--label', help="labels for plot", action='append', default=[])
-    parser.add_argument('-c', '--value-count', help="amount of values to plot", default=VALUE_COUNT, type=int)
+    parser.add_argument('-v', '--value-count', help="amount of values to plot", default=VALUE_COUNT, type=int)
+    parser.add_argument('-p', '--subplots', action='store_true', help="whether to create subplots")
+    parser.add_argument('-c', '--compact', action='store_true', help="whether to make the axis label compact")
     args = parser.parse_args()
 
     jls_file_paths = [x for x in args.jls_file if not '.anno.' in x]
@@ -216,4 +243,4 @@ if __name__ == "__main__":
     if args.output == None:
         args.output = '-'.join(file_dir)
 
-    plot_data(power, start_timestamp, end_timestamp, args.output, args.show, args.label, texts)
+    plot_data(power, start_timestamp, end_timestamp, args.output, args.show, args.label, texts, args.subplots, args.compact)

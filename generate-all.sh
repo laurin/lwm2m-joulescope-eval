@@ -16,4 +16,4 @@ python3 src/main.py data/lwm2m/bs-nosec/*.jls -l "NB-IoT" -l "LTE-M"
 
 python3 src/main.py data/lwm2m/fwu-flashswap/*.jls
 
-python3 src/main.py data/lwm2m/fwu-pull-lte_m-1024-comparison/*.jls -l "Blocksize 1024" -l "Blocksize 512" -c 4000
+python3 src/main.py data/lwm2m/fwu-pull-lte_m-1024-comparison/*.jls -l "Blocksize 1024" -l "Blocksize 512" -v 4000 -p -c
