@@ -122,16 +122,19 @@ def add_data_to_plot(ax, power, label, time_range_ms, length, offset=0):
         legend.get_frame().set_boxstyle('square', pad=0)
 
 
-def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, texts, subplots, compact):
+def plot_data(power, start_timestamp, end_timestamp, name, show_plot, label, texts, subplots, compact, flat):
     rows = 1
     if subplots:
         rows = len(power)
 
-    height = 3
+    height = 2.5
     height += 0.2 * len(texts)
 
     if subplots:
         height += 0.2 * len(power)
+
+    if flat:
+        height *= 0.75
 
     fig, axes = plt.subplots(rows, 1, figsize=(10, height), squeeze=False)
 
@@ -219,6 +222,7 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--value-count', help="amount of values to plot", default=VALUE_COUNT, type=int)
     parser.add_argument('-p', '--subplots', action='store_true', help="whether to create subplots")
     parser.add_argument('-c', '--compact', action='store_true', help="whether to make the axis label compact")
+    parser.add_argument('-f', '--flat', action='store_true', help="whether to make the plot flatter")
     args = parser.parse_args()
 
     jls_file_paths = [x for x in args.jls_file if not '.anno.' in x]
@@ -243,4 +247,4 @@ if __name__ == "__main__":
     if args.output == None:
         args.output = '-'.join(file_dir)
 
-    plot_data(power, start_timestamp, end_timestamp, args.output, args.show, args.label, texts, args.subplots, args.compact)
+    plot_data(power, start_timestamp, end_timestamp, args.output, args.show, args.label, texts, args.subplots, args.compact, args.flat)
